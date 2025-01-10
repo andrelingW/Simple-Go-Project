@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Get token from Authorization header
 		authHeader := c.Request().Header.Get("Authorization")
