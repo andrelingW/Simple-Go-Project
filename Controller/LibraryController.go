@@ -3,21 +3,25 @@ package Controller
 import (
 	"awesomeProject/Config"
 	"awesomeProject/Model"
+	"errors"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"net/http"
 )
 
 func Router(e *echo.Echo, db *gorm.DB) {
-	e.POST("/login", LoginHandler(db)) // Public route
-	e.POST("/register", RegisterHandlers(db))
+	//Public
+	e.POST("/login", loginHandler(db))
+	e.POST("/register", registerHandlers(db))
 
-	// Secured route with JWT validation middleware
-	e.GET("/protected", Config.Middleware(TestHandler)) // Secured route
-
+	//Secured
+	e.GET("/view/books", Config.Middleware(viewAllBookHandler(db))) // Secured route
+	e.GET("/view/description/:book", Config.Middleware(viewBookDetailHandler(db)))
+	e.GET("/view/borrow/:id", Config.Middleware(borrowBookHandler(db))) // Secured route
+	e.GET("/view/return/:id", Config.Middleware(returnBookHandler(db)))
 }
 
-func RegisterHandlers(db *gorm.DB) echo.HandlerFunc {
+func registerHandlers(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var user Model.UserModel
 
@@ -36,7 +40,7 @@ func RegisterHandlers(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
-func LoginHandler(db *gorm.DB) echo.HandlerFunc {
+func loginHandler(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var loginData struct {
 			Email    string `json:"email"`
@@ -74,8 +78,104 @@ func LoginHandler(db *gorm.DB) echo.HandlerFunc {
 	}
 }
 
-func TestHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "This is a protected route. You have access!",
-	})
+func viewAllBookHandler(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var books []Model.BookModel
+
+		type BookResponse struct {
+			ID        int    `json:"id"`
+			Title     string `json:"title"`
+			Author    string `json:"author"`
+			Available bool   `json:"available"`
+		}
+
+		if err := db.Find(&books).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to retrieve books"})
+		}
+
+		// Transform the result into the response struct
+		var response []BookResponse
+		for _, book := range books {
+			response = append(response, BookResponse{
+				ID:        book.ID,
+				Title:     book.Title,
+				Author:    book.Author,
+				Available: book.Available,
+			})
+		}
+
+		return c.JSON(http.StatusOK, response)
+	}
+}
+
+func viewBookDetailHandler(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		name := c.Param("book")
+		var book Model.BookModel
+
+		// Query the database for a book with the specified ID
+		if err := db.First(&book, name).Error; err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"message": "Book not found"})
+		}
+
+		return c.JSON(http.StatusOK, book)
+	}
+}
+
+func borrowBookHandler(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// Get the book ID from the request parameters
+		bookID := c.Param("id")
+
+		// Find the book by ID
+		var book Model.BookModel
+		if err := db.First(&book, bookID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.JSON(http.StatusNotFound, map[string]string{"message": "Book not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to find book"})
+		}
+
+		// Check if the book is already borrowed
+		if !book.Available {
+			return c.JSON(http.StatusConflict, map[string]string{"message": "Book is already borrowed"})
+		}
+
+		// Set `Available` to `false`
+		book.Available = false
+		if err := db.Save(&book).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to borrow book"})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"message": "Book borrowed successfully"})
+	}
+}
+
+func returnBookHandler(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// Get the book ID from the request parameters
+		bookID := c.Param("id")
+
+		// Find the book by ID
+		var book Model.BookModel
+		if err := db.First(&book, bookID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.JSON(http.StatusNotFound, map[string]string{"message": "Book not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to find book"})
+		}
+
+		// Check if the book is already returned
+		if book.Available {
+			return c.JSON(http.StatusConflict, map[string]string{"message": "Book is already returned"})
+		}
+
+		// Set `Available` to `true`
+		book.Available = true
+		if err := db.Save(&book).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to return book"})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"message": "Book returned successfully"})
+	}
 }
