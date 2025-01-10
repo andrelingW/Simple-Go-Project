@@ -1,0 +1,242 @@
+definitions:
+  Model.BookModel:
+    properties:
+      author:
+        type: string
+      available:
+        type: boolean
+      description:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+    type: object
+  Model.BookResponse:
+    properties:
+      author:
+        type: string
+      available:
+        type: boolean
+      id:
+        type: integer
+      title:
+        type: string
+    type: object
+  Model.UserModel:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      userId:
+        type: integer
+      userName:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Login user and receive a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - users
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email and password
+      parameters:
+      - description: User registration details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/Model.UserModel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully created user
+          schema:
+            type: string
+        "400":
+          description: Invalid JSON
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to create user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - users
+  /view/books:
+    get:
+      description: Retrieve all books excluding their descriptions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of books
+          schema:
+            items:
+              $ref: '#/definitions/Model.BookResponse'
+            type: array
+        "500":
+          description: Failed to retrieve books
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all books
+      tags:
+      - books
+  /view/borrow/{id}:
+    get:
+      description: Mark a book as borrowed
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book borrowed successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Book not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Book is already borrowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to borrow book
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Borrow a book
+      tags:
+      - books
+  /view/description/{book}:
+    get:
+      description: Retrieve detailed information about a specific book
+      parameters:
+      - description: Book ID
+        in: path
+        name: book
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book details
+          schema:
+            $ref: '#/definitions/Model.BookModel'
+        "404":
+          description: Book not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get book details
+      tags:
+      - books
+  /view/return/{id}:
+    get:
+      description: Mark a book as returned
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book returned successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Book not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Book is already returned
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to return book
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Return a book
+      tags:
+      - books
+swagger: "2.0"

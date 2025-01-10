@@ -7,7 +7,6 @@ import (
 	"log"
 )
 
-// Initialize initializes the SQLite database and returns a pointer to the database
 func InitializeDatabase() *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
@@ -23,7 +22,6 @@ func InitializeDatabase() *gorm.DB {
 	return db
 }
 
-// InsertBooks inserts predefined books into the database with Available = false
 func insertBooks(db *gorm.DB) {
 	books := []Model.BookModel{
 		{Title: "The Great Gatsby", Author: "F. Scott Fitzgerald", Description: "A novel about the American Dream.", Available: true},
@@ -38,7 +36,6 @@ func insertBooks(db *gorm.DB) {
 		{Title: "Crime and Punishment", Author: "Fyodor Dostoevsky", Description: "A psychological drama about guilt and redemption.", Available: true},
 	}
 
-	// Insert books into the database
 	for _, book := range books {
 		if err := db.Create(&book).Error; err != nil {
 			log.Println("Error inserting book:", err)
